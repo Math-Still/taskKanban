@@ -1,0 +1,912 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>任务时间轴看板</title>
+    <script src="https://cdn.bootcdn.net/ajax/libs/mermaid/11.8.0/mermaid.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: #333;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+            color: white;
+        }
+
+        .header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+
+        .header p {
+            font-size: 1.1rem;
+            opacity: 0.9;
+        }
+
+        .stats {
+            display: flex;
+            justify-content: center;
+            margin-bottom: 30px;
+            gap: 20px;
+        }
+
+        .stat-card {
+            background: rgba(255,255,255,0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 15px;
+            padding: 20px;
+            text-align: center;
+            color: white;
+            min-width: 120px;
+        }
+
+        .stat-number {
+            font-size: 2rem;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+
+        .stat-label {
+            font-size: 0.9rem;
+            opacity: 0.8;
+        }
+
+        .charts-section {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 30px;
+            margin-bottom: 40px;
+        }
+
+        .chart-container {
+            background: white;
+            border-radius: 20px;
+            padding: 25px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            transition: transform 0.3s ease;
+        }
+
+        .chart-container:hover {
+            transform: translateY(-5px);
+        }
+
+        .chart-title {
+            font-size: 1.3rem;
+            margin-bottom: 20px;
+            color: #333;
+            text-align: center;
+            font-weight: 600;
+        }
+
+        .mermaid {
+            text-align: center;
+        }
+
+        .tasks-section {
+            background: white;
+            border-radius: 20px;
+            padding: 25px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+        }
+
+        .tasks-title {
+            font-size: 1.5rem;
+            margin-bottom: 25px;
+            text-align: center;
+            color: #333;
+        }
+
+        .tasks-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 15px;
+        }
+
+        .task-card {
+            border-radius: 12px;
+            padding: 15px;
+            border-left: 4px solid;
+            transition: all 0.3s ease;
+            background: #f8f9fa;
+            max-height: 200px;
+            overflow: hidden;
+        }
+
+        .task-card:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+        }
+
+        .task-card.pending {
+            border-left-color: #ffc107;
+            background: linear-gradient(135deg, #fff3cd 0%, #ffeaa7 100%);
+        }
+
+        .task-card.in-progress {
+            border-left-color: #17a2b8;
+            background: linear-gradient(135deg, #d1ecf1 0%, #bee5eb 100%);
+        }
+
+        .task-card.completed {
+            border-left-color: #28a745;
+            background: linear-gradient(135deg, #d4edda 0%, #c3e6cb 100%);
+        }
+
+        .task-card.cancelled {
+            border-left-color: #dc3545;
+            background: linear-gradient(135deg, #f8d7da 0%, #f5c6cb 100%);
+        }
+
+        .task-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+
+        .task-header h3 {
+            font-size: 1.1rem;
+            color: #333;
+            margin: 0;
+            line-height: 1.3;
+        }
+
+        .task-date {
+            font-size: 0.8rem;
+            color: #666;
+            background: rgba(255,255,255,0.7);
+            padding: 3px 6px;
+            border-radius: 8px;
+        }
+
+        .task-status, .task-priority {
+            display: inline-block;
+            padding: 3px 8px;
+            border-radius: 15px;
+            font-size: 0.75rem;
+            font-weight: 500;
+            margin-bottom: 8px;
+            margin-right: 8px;
+        }
+
+        .task-status.pending {
+            background: #fff3cd;
+            color: #856404;
+        }
+
+        .task-status.in-progress {
+            background: #d1ecf1;
+            color: #0c5460;
+        }
+
+        .task-status.completed {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .task-status.cancelled {
+            background: #f8d7da;
+            color: #721c24;
+        }
+
+        .task-priority.low {
+            background: #e2e3e5;
+            color: #383d41;
+        }
+
+        .task-priority.medium {
+            background: #fff3cd;
+            color: #856404;
+        }
+
+        .task-priority.high {
+            background: #f8d7da;
+            color: #721c24;
+        }
+
+        .task-priority.urgent {
+            background: #f8d7da;
+            color: #721c24;
+            animation: pulse 2s infinite;
+        }
+
+        .task-content {
+            color: #555;
+            line-height: 1.5;
+            font-size: 0.9rem;
+        }
+
+        .task-content h1, .task-content h2, .task-content h3 {
+            margin: 8px 0 6px 0;
+            color: #333;
+            font-size: 1rem;
+        }
+
+        .task-content p {
+            margin-bottom: 6px;
+        }
+
+        .task-content ul, .task-content ol {
+            margin-left: 15px;
+            margin-bottom: 6px;
+        }
+
+        .task-content code {
+            background: rgba(0,0,0,0.1);
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-family: 'Monaco', 'Menlo', monospace;
+        }
+
+        .task-content pre {
+            background: rgba(0,0,0,0.1);
+            padding: 15px;
+            border-radius: 8px;
+            overflow-x: auto;
+            margin: 15px 0;
+        }
+
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.7; }
+            100% { opacity: 1; }
+        }
+
+        @media (max-width: 768px) {
+            .charts-section {
+                grid-template-columns: 1fr;
+            }
+            
+            .tasks-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .header h1 {
+                font-size: 2rem;
+            }
+            
+            .container {
+                padding: 15px;
+            }
+        }
+
+        .footer {
+            text-align: center;
+            margin-top: 40px;
+            color: white;
+            opacity: 0.8;
+        }
+
+        /* 模态框样式 */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.8);
+            backdrop-filter: blur(5px);
+        }
+
+        .modal-content {
+            background-color: white;
+            margin: 2% auto;
+            padding: 30px;
+            border-radius: 20px;
+            width: 90%;
+            max-width: 1200px;
+            max-height: 90vh;
+            overflow-y: auto;
+            position: relative;
+            box-shadow: 0 25px 50px rgba(0,0,0,0.3);
+        }
+
+        .close {
+            color: #aaa;
+            float: right;
+            font-size: 28px;
+            font-weight: bold;
+            cursor: pointer;
+            position: absolute;
+            right: 20px;
+            top: 15px;
+        }
+
+        .close:hover,
+        .close:focus {
+            color: #000;
+        }
+
+        .modal-mermaid {
+            text-align: center;
+            margin-top: 20px;
+        }
+
+        .modal-mermaid svg {
+            max-width: 100%;
+            height: auto;
+            transition: transform 0.3s ease;
+        }
+
+        /* 缩放控制按钮样式 */
+        .zoom-controls {
+            text-align: center;
+            margin-top: 20px;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 10px;
+        }
+
+        .zoom-btn {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 8px 15px;
+            margin: 0 5px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.2s ease;
+        }
+
+        .zoom-btn:hover {
+            background: #0056b3;
+            transform: translateY(-2px);
+        }
+
+        .zoom-btn:active {
+            transform: translateY(0);
+        }
+
+        /* 缩放状态指示 */
+        .zoom-info {
+            display: inline-block;
+            margin-left: 15px;
+            color: #666;
+            font-size: 12px;
+        }
+
+        /* 可点击元素样式 */
+        .timeline-chart {
+            cursor: pointer;
+            transition: transform 0.2s ease;
+        }
+
+        .timeline-chart:hover {
+            transform: scale(1.02);
+        }
+
+        .task-card {
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .task-card:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+        }
+
+        /* 任务详情模态框内容样式 */
+        #modal-task-content h1 {
+            color: #333;
+            margin-bottom: 20px;
+            font-size: 2rem;
+        }
+
+        #modal-task-content h2 {
+            color: #555;
+            margin: 20px 0 15px 0;
+            font-size: 1.5rem;
+        }
+
+        #modal-task-content h3 {
+            color: #666;
+            margin: 15px 0 10px 0;
+            font-size: 1.3rem;
+        }
+
+        #modal-task-content p {
+            margin-bottom: 15px;
+            line-height: 1.8;
+        }
+
+        #modal-task-content ul, #modal-task-content ol {
+            margin: 15px 0 15px 20px;
+            line-height: 1.8;
+        }
+
+        #modal-task-content li {
+            margin-bottom: 8px;
+        }
+
+        #modal-task-content code {
+            background: rgba(0,0,0,0.1);
+            padding: 3px 8px;
+            border-radius: 4px;
+            font-family: 'Monaco', 'Menlo', monospace;
+        }
+
+        #modal-task-content pre {
+            background: rgba(0,0,0,0.1);
+            padding: 20px;
+            border-radius: 8px;
+            overflow-x: auto;
+            margin: 20px 0;
+        }
+
+        #modal-task-content blockquote {
+            border-left: 4px solid #ddd;
+            margin: 20px 0;
+            padding-left: 20px;
+            font-style: italic;
+            color: #666;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🚀 任务时间轴</h1>
+            <p>机器人实验室团队</p>
+        </div>
+
+        <div class="stats">
+            <div class="stat-card">
+                <div class="stat-number">3</div>
+                <div class="stat-label">总任务数</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number">1</div>
+                <div class="stat-label">待处理</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number">1</div>
+                <div class="stat-label">进行中</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number">1</div>
+                <div class="stat-label">已完成</div>
+            </div>
+
+        </div>
+
+        <div class="charts-section">
+            <div class="chart-container" style="grid-column: 1 / -1;">
+                <div class="chart-title">📅 任务时间轴</div>
+                <div class="mermaid timeline-chart" id="timeline-chart">
+                    gantt
+    title SDNU Robotics Teams Humanoid Robot Project Timeline (2025-2028)
+    dateFormat  YYYY-MM-DD
+    axisFormat  %m/%Y
+    
+    section 商业计划
+    项目书编制          :done,      bp, 2025-08-01, 2025-09-30
+    公司注册/银行开户   :active,    corp, 2025-08-01, 2025-09-30
+    商标注册            :           tm, 2025-12-01, 2026-01-31
+    团队招募            :           hr, 2026-02-01, 2026-03-31
+    ISO9001认证         :crit,      iso, 2026-04-01, 2026-05-31
+    种子轮融资          :crit,      seed, 2026-06-01, 2026-07-31
+    教育市场试点        :           edu, 2026-11-01, 2027-01-31
+    Pre-A轮融资         :crit,      prea, 2027-05-01, 2027-06-30
+    量产产线建设        :           prod, 2027-07-01, 2027-08-31
+    CE/CR认证          :           ce, 2027-09-01, 2027-10-31
+    A轮融资            :crit,      seria, 2028-05-01, 2028-06-30
+    
+    section 技术开发
+    机械系统设计        :done,      mech, 2025-08-01, 2025-10-31
+    智能架构搭建        :active,    ai, 2025-09-01, 2025-11-30
+    运动算法V1.0        :crit,      algo1, 2025-12-01, 2026-03-31
+    样机集成调试        :crit,      proto, 2026-04-01, 2026-05-31
+    SLAM导航开发        :           nav, 2026-06-01, 2026-08-31
+    运动算法V2.0        :crit,      algo2, 2026-09-01, 2026-12-31
+    小批量试产(100台)   :           pilot, 2027-01-01, 2027-02-28
+    消防模块开发        :           fire, 2027-11-01, 2028-01-31
+    医疗夹爪开发        :           med, 2028-02-01, 2028-04-30
+    
+    section 长期任务
+    知识产权布局        :           ip, 2025-09-01, 2028-12-31
+    政府资质认证        :           cert, 2026-01-01, 2028-06-30
+    开发者社区建设      :           comm, 2026-07-01, 2028-12-31
+                </div>
+            </div>
+            
+            <!-- 任务看板暂时隐藏
+            <div class="chart-container">
+                <div class="chart-title">📋 任务看板</div>
+                <div class="mermaid">
+                    {{MERMAID_KANBAN}}
+                </div>
+            </div>
+            -->
+        </div>
+
+        <div class="tasks-section">
+            <div class="tasks-title">📝 任务详情</div>
+            <div class="tasks-grid">
+                
+            <div class="task-card pending">
+                <div class="task-header">
+                    <h3>技术方案设计</h3>
+                    <span class="task-date">Thu Jan 25 2024 00:00:00 GMT+0000 (Coordinated Universal Time)</span>
+                </div>
+                <div class="task-status pending">待处理</div>
+                <div class="task-priority medium">中</div>
+                <div class="task-content"><h1>技术方案设计</h1>
+<h2>技术选型</h2>
+<ul>
+<li><strong>前端框架</strong>: React.js</li>
+<li><strong>后端框架</strong>: Node.js + Express</li>
+<li><strong>数据库</strong>: MongoDB</li>
+<li><strong>部署</strong>: Docker + AWS</li>
+</ul>
+<h2>架构设计</h2>
+<pre><code>┌─────────────┐    ┌─────────────┐    ┌─────────────┐
+│  前端应用   │    │  后端API    │    │  数据库     │
+│  React.js   │◄──►│  Node.js    │◄──►│  MongoDB    │
+└─────────────┘    └─────────────┘    └─────────────┘
+</code></pre>
+<h2>开发计划</h2>
+<ol>
+<li>搭建开发环境</li>
+<li>创建项目骨架</li>
+<li>实现核心功能</li>
+<li>测试和优化</li>
+</ol>
+<h2>预计时间</h2>
+<ul>
+<li>环境搭建: 2天</li>
+<li>核心开发: 10天</li>
+<li>测试优化: 3天</li>
+<li>总计: 15天</li>
+</ul>
+</div>
+            </div>
+        
+            <div class="task-card in-progress">
+                <div class="task-header">
+                    <h3>需求分析文档</h3>
+                    <span class="task-date">Sat Jan 20 2024 00:00:00 GMT+0000 (Coordinated Universal Time)</span>
+                </div>
+                <div class="task-status in-progress">进行中</div>
+                <div class="task-priority high">高</div>
+                <div class="task-content"><h1>需求分析文档</h1>
+<h2>当前进度</h2>
+<p>🔄 正在进行中 (70% 完成)</p>
+<h2>已完成部分</h2>
+<ul>
+<li>用户需求调研</li>
+<li>功能需求分析</li>
+<li>非功能需求分析</li>
+</ul>
+<h2>待完成部分</h2>
+<ul>
+<li>需求优先级排序</li>
+<li>需求变更管理流程</li>
+<li>需求评审会议</li>
+</ul>
+<h2>技术考虑</h2>
+<ul>
+<li>系统架构设计</li>
+<li>数据库设计</li>
+<li>API接口设计</li>
+</ul>
+<h2>风险评估</h2>
+<p>⚠️ 需求变更频繁
+⚠️ 时间压力较大</p>
+</div>
+            </div>
+        
+            <div class="task-card completed">
+                <div class="task-header">
+                    <h3>项目启动会议</h3>
+                    <span class="task-date">Mon Jan 15 2024 00:00:00 GMT+0000 (Coordinated Universal Time)</span>
+                </div>
+                <div class="task-status completed">已完成</div>
+                <div class="task-priority high">高</div>
+                <div class="task-content"><h1>项目启动会议</h1>
+<h2>会议内容</h2>
+<ul>
+<li>确定项目目标和范围</li>
+<li>分配团队成员角色</li>
+<li>制定项目时间表</li>
+</ul>
+<h2>会议结果</h2>
+<p>✅ 项目目标已明确
+✅ 团队角色已分配
+✅ 时间表已制定</p>
+<h2>下一步行动</h2>
+<ol>
+<li>开始需求分析</li>
+<li>准备技术方案</li>
+<li>建立开发环境</li>
+</ol>
+</div>
+            </div>
+        
+            </div>
+        </div>
+
+        <div class="footer">
+            <p>自动生成于 {{GENERATED_TIME}} | 基于 Mermaid.js 构建</p>
+        </div>
+    </div>
+
+    <!-- 时间轴放大模态框 -->
+    <div id="timeline-modal" class="modal">
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            <h2>📅 任务时间轴</h2>
+            <div class="modal-mermaid" id="modal-timeline-chart">
+                {{MERMAID_TIMELINE}}
+            </div>
+            <div class="zoom-controls">
+                <button class="zoom-btn" id="zoom-in">🔍+</button>
+                <button class="zoom-btn" id="zoom-out">🔍-</button>
+                <button class="zoom-btn" id="zoom-reset">🔄</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 任务详情模态框 -->
+    <div id="task-modal" class="modal">
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            <div id="modal-task-content"></div>
+        </div>
+    </div>
+
+    <script>
+        // 初始化Mermaid
+        mermaid.initialize({
+            startOnLoad: false, // 改为手动控制加载
+            theme: 'default',
+            flowchart: {
+                useMaxWidth: true,
+                htmlLabels: true
+            },
+            gantt: {
+                useMaxWidth: true
+            }
+        });
+
+        // 添加生成时间
+        document.addEventListener('DOMContentLoaded', function() {
+            const now = new Date();
+            const timeString = now.toLocaleString('zh-CN');
+            document.body.innerHTML = document.body.innerHTML.replace('{{GENERATED_TIME}}', timeString);
+            
+            // 统计数字现在由配置文件管理，无需动态计算
+
+            // 等待Mermaid渲染完成后再初始化模态框
+            mermaid.init(undefined, '.mermaid').then(() => {
+                // 初始化模态框功能
+                initModals();
+            });
+        });
+
+        // 模态框功能
+        function initModals() {
+            // 获取模态框元素
+            const timelineModal = document.getElementById('timeline-modal');
+            const taskModal = document.getElementById('task-modal');
+            const timelineChart = document.getElementById('timeline-chart');
+            const taskCards = document.querySelectorAll('.task-card');
+
+            // 时间轴点击放大
+            if (timelineChart) {
+                timelineChart.addEventListener('click', function() {
+                    timelineModal.style.display = 'block';
+                    // 等待一小段时间确保模态框完全显示，然后复制SVG
+                    setTimeout(() => {
+                        const originalSVG = timelineChart.querySelector('svg');
+                        if (originalSVG) {
+                            const modalChart = document.getElementById('modal-timeline-chart');
+                            modalChart.innerHTML = '';
+                            const clonedSVG = originalSVG.cloneNode(true);
+                            // 调整SVG尺寸以适应模态框
+                            clonedSVG.style.maxWidth = '100%';
+                            clonedSVG.style.height = 'auto';
+                            // 移除可能影响显示的属性
+                            clonedSVG.removeAttribute('width');
+                            clonedSVG.removeAttribute('height');
+                            // 确保SVG在模态框中正确显示
+                            clonedSVG.style.display = 'block';
+                            // 添加缩放功能
+                            clonedSVG.id = 'zoomable-svg';
+                            modalChart.appendChild(clonedSVG);
+                            // 初始化缩放功能
+                            initZoomControls();
+                        } else {
+                            console.log('未找到SVG元素，尝试重新渲染');
+                            // 如果找不到SVG，尝试重新渲染
+                            mermaid.init(undefined, '#modal-timeline-chart');
+                        }
+                    }, 100);
+                });
+            }
+
+            // 任务卡片点击查看详情
+            taskCards.forEach(card => {
+                card.addEventListener('click', function() {
+                    const taskTitle = this.querySelector('h3').textContent;
+                    const taskContent = this.querySelector('.task-content').innerHTML;
+                    const taskDate = this.querySelector('.task-date').textContent;
+                    const taskStatus = this.querySelector('.task-status').textContent;
+                    const taskPriority = this.querySelector('.task-priority').textContent;
+
+                    // 构建详细的HTML内容
+                    const detailedContent = `
+                        <h1>${taskTitle}</h1>
+                        <div class="task-meta">
+                            <p><strong>日期:</strong> ${taskDate}</p>
+                            <p><strong>状态:</strong> ${taskStatus}</p>
+                            <p><strong>优先级:</strong> ${taskPriority}</p>
+                        </div>
+                        <hr style="margin: 20px 0; border: none; border-top: 1px solid #eee;">
+                        <div class="task-detail-content">
+                            ${taskContent}
+                        </div>
+                    `;
+
+                    document.getElementById('modal-task-content').innerHTML = detailedContent;
+                    taskModal.style.display = 'block';
+                });
+            });
+
+            // 关闭模态框
+            const closeButtons = document.querySelectorAll('.close');
+            closeButtons.forEach(button => {
+                button.addEventListener('click', function() {
+                    timelineModal.style.display = 'none';
+                    taskModal.style.display = 'none';
+                });
+            });
+
+            // 点击模态框外部关闭
+            window.addEventListener('click', function(event) {
+                if (event.target === timelineModal) {
+                    timelineModal.style.display = 'none';
+                }
+                if (event.target === taskModal) {
+                    taskModal.style.display = 'none';
+                }
+            });
+
+            // ESC键关闭模态框
+            document.addEventListener('keydown', function(event) {
+                if (event.key === 'Escape') {
+                    timelineModal.style.display = 'none';
+                    taskModal.style.display = 'none';
+                }
+            });
+        }
+
+        // 缩放控制功能 - 移到全局作用域
+        window.initZoomControls = function() {
+            const svg = document.getElementById('zoomable-svg');
+            if (!svg) return;
+
+            let currentScale = 1;
+            const minScale = 0.5;
+            const maxScale = 3;
+            const scaleStep = 0.2;
+
+            // 获取缩放按钮
+            const zoomInBtn = document.getElementById('zoom-in');
+            const zoomOutBtn = document.getElementById('zoom-out');
+            const zoomResetBtn = document.getElementById('zoom-reset');
+
+            // 放大功能
+            zoomInBtn.addEventListener('click', function() {
+                if (currentScale < maxScale) {
+                    currentScale += scaleStep;
+                    updateZoom();
+                }
+            });
+
+            // 缩小功能
+            zoomOutBtn.addEventListener('click', function() {
+                if (currentScale > minScale) {
+                    currentScale -= scaleStep;
+                    updateZoom();
+                }
+            });
+
+            // 重置缩放
+            zoomResetBtn.addEventListener('click', function() {
+                currentScale = 1;
+                updateZoom();
+            });
+
+            // 鼠标滚轮缩放
+            svg.addEventListener('wheel', function(event) {
+                event.preventDefault();
+                if (event.deltaY < 0) {
+                    // 向上滚动，放大
+                    if (currentScale < maxScale) {
+                        currentScale += scaleStep;
+                        updateZoom();
+                    }
+                } else {
+                    // 向下滚动，缩小
+                    if (currentScale > minScale) {
+                        currentScale -= scaleStep;
+                        updateZoom();
+                    }
+                }
+            });
+
+            // 拖拽功能
+            let isDragging = false;
+            let startX, startY, translateX = 0, translateY = 0;
+
+            svg.addEventListener('mousedown', function(event) {
+                isDragging = true;
+                startX = event.clientX - translateX;
+                startY = event.clientY - translateY;
+                svg.style.cursor = 'grabbing';
+            });
+
+            svg.addEventListener('mousemove', function(event) {
+                if (isDragging) {
+                    translateX = event.clientX - startX;
+                    translateY = event.clientY - startY;
+                    updateZoom();
+                }
+            });
+
+            svg.addEventListener('mouseup', function() {
+                isDragging = false;
+                svg.style.cursor = 'grab';
+            });
+
+            svg.addEventListener('mouseleave', function() {
+                isDragging = false;
+                svg.style.cursor = 'grab';
+            });
+
+            // 更新缩放和位置
+            function updateZoom() {
+                svg.style.transform = `scale(${currentScale}) translate(${translateX / currentScale}px, ${translateY / currentScale}px)`;
+                
+                // 更新按钮状态
+                zoomInBtn.disabled = currentScale >= maxScale;
+                zoomOutBtn.disabled = currentScale <= minScale;
+                
+                // 添加缩放信息显示
+                let zoomInfo = document.querySelector('.zoom-info');
+                if (!zoomInfo) {
+                    zoomInfo = document.createElement('span');
+                    zoomInfo.className = 'zoom-info';
+                    document.querySelector('.zoom-controls').appendChild(zoomInfo);
+                }
+                zoomInfo.textContent = `缩放: ${Math.round(currentScale * 100)}%`;
+            }
+
+            // 初始化按钮状态
+            updateZoom();
+        }
+    </script>
+</body>
+</html>
