@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>任务时间轴看板</title>
-    <script src="https://cdn.bootcdn.net/ajax/libs/mermaid/11.8.0/mermaid.min.js"></script>
+    <script src="./scripts/mermaid.min.js"></script>
     <style>
         * {
             margin: 0;
@@ -521,26 +521,10 @@
         </div>
     </div>
 
-    <!-- 时间轴放大模态框 -->
-    <div id="timeline-modal" class="modal">
-        <div class="modal-content">
-            <span class="close">&times;</span>
-            <h2>📅 任务时间轴</h2>
-            <div class="modal-mermaid" id="modal-timeline-chart">
-                {{MERMAID_TIMELINE}}
-            </div>
-            <div class="zoom-controls">
-                <button class="zoom-btn" id="zoom-in">🔍+</button>
-                <button class="zoom-btn" id="zoom-out">🔍-</button>
-                <button class="zoom-btn" id="zoom-reset">🔄</button>
-            </div>
-        </div>
-    </div>
-
     <!-- 任务详情模态框 -->
     <div id="task-modal" class="modal">
         <div class="modal-content">
-            <span class="close">&times;</span>
+            <!-- <span class="close" id="close">&times;</span> -->
             <div id="modal-task-content"></div>
         </div>
     </div>
@@ -565,8 +549,6 @@
             const timeString = now.toLocaleString('zh-CN');
             document.body.innerHTML = document.body.innerHTML.replace('{{GENERATED_TIME}}', timeString);
             
-            // 统计数字现在由配置文件管理，无需动态计算
-
             // 等待Mermaid渲染完成后再初始化模态框
             mermaid.init(undefined, '.mermaid').then(() => {
                 // 初始化模态框功能
@@ -582,38 +564,6 @@
             const timelineChart = document.getElementById('timeline-chart');
             const taskCards = document.querySelectorAll('.task-card');
 
-            // 时间轴点击放大
-            if (timelineChart) {
-                timelineChart.addEventListener('click', function() {
-                    timelineModal.style.display = 'block';
-                    // 等待一小段时间确保模态框完全显示，然后复制SVG
-                    setTimeout(() => {
-                        const originalSVG = timelineChart.querySelector('svg');
-                        if (originalSVG) {
-                            const modalChart = document.getElementById('modal-timeline-chart');
-                            modalChart.innerHTML = '';
-                            const clonedSVG = originalSVG.cloneNode(true);
-                            // 调整SVG尺寸以适应模态框
-                            clonedSVG.style.maxWidth = '100%';
-                            clonedSVG.style.height = 'auto';
-                            // 移除可能影响显示的属性
-                            clonedSVG.removeAttribute('width');
-                            clonedSVG.removeAttribute('height');
-                            // 确保SVG在模态框中正确显示
-                            clonedSVG.style.display = 'block';
-                            // 添加缩放功能
-                            clonedSVG.id = 'zoomable-svg';
-                            modalChart.appendChild(clonedSVG);
-                            // 初始化缩放功能
-                            initZoomControls();
-                        } else {
-                            console.log('未找到SVG元素，尝试重新渲染');
-                            // 如果找不到SVG，尝试重新渲染
-                            mermaid.init(undefined, '#modal-timeline-chart');
-                        }
-                    }, 100);
-                });
-            }
 
             // 任务卡片点击查看详情
             taskCards.forEach(card => {

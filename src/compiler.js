@@ -168,8 +168,14 @@ class MermaidTimelineCompiler {
             
             const html = this.generateHTML(posts);
             const outputPath = path.join(this.outputDir, this.outputFile);
-            
+            const scripts= fs.readFileSync('./src/scripts/mermaid.min.js', 'utf-8');
             fs.writeFileSync(outputPath, html, 'utf-8');
+            const scriptsDir = path.join(this.outputDir, 'scripts');
+            if (!fs.existsSync(scriptsDir)) {
+                fs.mkdirSync(scriptsDir, { recursive: true });
+            }
+            fs.writeFileSync(path.join(scriptsDir, 'mermaid.min.js'), scripts, 'utf-8');
+            
             console.log(`编译完成！输出文件: ${outputPath}`);
             
         } catch (error) {
