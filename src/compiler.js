@@ -52,8 +52,8 @@ class MermaidTimelineCompiler {
             }
         });
 
-        // 按日期排序
-        return posts.sort((a, b) => new Date(b.date) - new Date(a.date));
+        // 按日期正序排序（最早的在前）
+        return posts.sort((a, b) => new Date(a.date) - new Date(b.date));
     }
 
     // 获取文件修改日期
@@ -103,6 +103,50 @@ class MermaidTimelineCompiler {
         };
     }
 
+    // 生成任务时间概览的CLI输出
+    printTaskTimelineOverview(posts) {
+        console.log('\n📅 任务时间概览:');
+        console.log('='.repeat(80));
+        
+        // 按日期分组任务
+        const tasksByDate = {};
+        posts.forEach(post => {
+            if (!tasksByDate[post.date]) {
+                tasksByDate[post.date] = [];
+            }
+            tasksByDate[post.date].push(post);
+        });
+        
+        // 获取所有日期并排序
+        const sortedDates = Object.keys(tasksByDate).sort((a, b) => new Date(a) - new Date(b));
+        
+        // 打印每个日期的任务
+        sortedDates.forEach(date => {
+            console.log(`\n📆 ${date}:`);
+            console.log('-'.repeat(40));
+            
+            tasksByDate[date].forEach(task => {
+                const statusIcon = {
+                    'pending': '⏳',
+                    'in-progress': '🔄',
+                    'completed': '✅',
+                    'cancelled': '❌'
+                }[task.status] || '📝';
+                
+                const priorityColor = {
+                    'low': '\x1b[32m', // 绿色
+                    'medium': '\x1b[33m', // 黄色
+                    'high': '\x1b[31m', // 红色
+                    'urgent': '\x1b[35m' // 紫色
+                }[task.priority] || '\x1b[0m'; // 默认无色
+                
+                console.log(`${statusIcon} ${task.title} ${priorityColor}[${this.getPriorityText(task.priority)}]\x1b[0m`);
+            });
+        });
+        
+        console.log('\n' + '='.repeat(80));
+    }
+
     // 生成HTML内容
     generateHTML(posts) {
         const template = fs.readFileSync(this.templatePath, 'utf-8');
@@ -110,7 +154,7 @@ class MermaidTimelineCompiler {
         const mermaidTimeline = this.readTimelineMermaid();
         const taskStatus = this.readTaskStatus();
         
-        // 生成任务列表HTML
+        // 生成任务列表HTML（按时间顺序）
         const tasksHTML = posts.map(post => `
             <div class="task-card ${post.status}">
                 <div class="task-header">
@@ -166,10 +210,15 @@ class MermaidTimelineCompiler {
             const posts = this.readPosts();
             console.log(`找到 ${posts.length} 个post文件`);
             
+            // 打印任务时间概览
+            this.printTaskTimelineOverview(posts);
+            
             const html = this.generateHTML(posts);
             const outputPath = path.join(this.outputDir, this.outputFile);
-            const scripts= fs.readFileSync('./src/scripts/mermaid.min.js', 'utf-8');
+            const scripts = fs.readFileSync('./src/scripts/mermaid.min.js', 'utf-8');
+            
             fs.writeFileSync(outputPath, html, 'utf-8');
+            
             const scriptsDir = path.join(this.outputDir, 'scripts');
             if (!fs.existsSync(scriptsDir)) {
                 fs.mkdirSync(scriptsDir, { recursive: true });
